@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">ReelToShorts</string>
+    <string name="floating_button_choose_video">Choose video</string>
 </resources>
