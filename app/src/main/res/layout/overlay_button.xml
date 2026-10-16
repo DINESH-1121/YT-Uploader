@@ -6,5 +6,5 @@
     android:backgroundTint="#E53935"
     android:paddingHorizontal="16dp"
     android:paddingVertical="10dp"
-    android:text="Upload to Shorts"
+    android:text="Choose video"
     android:textColor="#FFFFFF" />

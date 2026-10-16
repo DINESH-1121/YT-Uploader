@@ -82,6 +82,4 @@ dependencies {
   implementation(libs.androidx.navigation3.runtime)
   implementation(libs.androidx.lifecycle.viewmodel.navigation3)
 
-  // Networking
-  implementation("com.squareup.okhttp3:okhttp:4.12.0")
 }
