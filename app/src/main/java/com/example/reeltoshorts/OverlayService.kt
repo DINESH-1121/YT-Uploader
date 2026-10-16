@@ -8,23 +8,30 @@ import android.content.Intent
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.IBinder
+import android.provider.Settings
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.WindowManager
 import android.widget.Button
+import android.widget.FrameLayout
 import androidx.core.app.NotificationCompat
 
 class OverlayService : Service() {
     private lateinit var windowManager: WindowManager
     private lateinit var floatingButton: Button
+    private var floatingButtonAdded = false
 
     override fun onCreate() {
         super.onCreate()
         startForeground(1001, createNotification())
+        if (!Settings.canDrawOverlays(this)) {
+            stopSelf()
+            return
+        }
         windowManager = getSystemService(WindowManager::class.java)
 
         val inflater = LayoutInflater.from(this)
-        floatingButton = inflater.inflate(R.layout.overlay_button, null) as Button
+        floatingButton = inflater.inflate(R.layout.overlay_button, FrameLayout(this), false) as Button
         floatingButton.setOnClickListener {
             handleButtonClick()
         }
@@ -45,7 +52,14 @@ class OverlayService : Service() {
         params.x = 30
         params.y = 260
 
-        windowManager.addView(floatingButton, params)
+        try {
+            windowManager.addView(floatingButton, params)
+            floatingButtonAdded = true
+        } catch (_: SecurityException) {
+            stopSelf()
+        } catch (_: WindowManager.BadTokenException) {
+            stopSelf()
+        }
     }
 
     private fun handleButtonClick() {
@@ -80,10 +94,12 @@ class OverlayService : Service() {
     }
 
     override fun onDestroy() {
-        super.onDestroy()
-        if (::floatingButton.isInitialized) {
+        if (floatingButtonAdded) {
             windowManager.removeViewImmediate(floatingButton)
+            floatingButtonAdded = false
         }
+        stopForeground(Service.STOP_FOREGROUND_REMOVE)
+        super.onDestroy()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
