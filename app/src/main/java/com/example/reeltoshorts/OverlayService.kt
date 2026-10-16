@@ -4,8 +4,6 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
-import android.content.ClipboardManager
-import android.content.Context
 import android.content.Intent
 import android.graphics.PixelFormat
 import android.os.Build
@@ -14,22 +12,11 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.WindowManager
 import android.widget.Button
-import android.widget.Toast
 import androidx.core.app.NotificationCompat
-import androidx.core.content.FileProvider
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.io.File
-import java.io.FileOutputStream
-import okhttp3.OkHttpClient
-import okhttp3.Request
 
 class OverlayService : Service() {
     private lateinit var windowManager: WindowManager
     private lateinit var floatingButton: Button
-    private val ioScope = CoroutineScope(Dispatchers.IO)
 
     override fun onCreate() {
         super.onCreate()
@@ -62,65 +49,15 @@ class OverlayService : Service() {
     }
 
     private fun handleButtonClick() {
-        val reelUrl = getInstagramUrlFromClipboard() ?: run {
-            Toast.makeText(this, "Copy an Instagram Reel link first", Toast.LENGTH_LONG).show()
-            return
-        }
-
-        ioScope.launch {
-            val videoFile = downloadVideo(reelUrl)
-            if (videoFile == null) {
-                Toast.makeText(this@OverlayService, "Video download failed", Toast.LENGTH_LONG).show()
-                return@launch
-            }
-
-            val uri = FileProvider.getUriForFile(
-                this@OverlayService,
-                "${packageName}.provider",
-                videoFile
+        val intent = Intent(this, MainActivity::class.java).apply {
+            putExtra(MainActivity.EXTRA_PICK_VIDEO, true)
+            addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP
             )
-
-            val intent = Intent(Intent.ACTION_SEND).apply {
-                type = "video/*"
-                putExtra(Intent.EXTRA_STREAM, uri)
-                putExtra(Intent.EXTRA_TEXT, "#Shorts")
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                setPackage("com.google.android.youtube")
-            }
-
-            try {
-                startActivity(intent)
-            } catch (e: Exception) {
-                Toast.makeText(this@OverlayService, "YouTube app is not installed", Toast.LENGTH_LONG).show()
-            }
         }
-    }
-
-    private fun getInstagramUrlFromClipboard(): String? {
-        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        val item = clipboard.primaryClip?.getItemAt(0) ?: return null
-        val text = item.text?.toString() ?: return null
-        return if (text.contains("instagram.com/reel/")) text else null
-    }
-
-    private fun downloadVideo(url: String): File? {
-        return try {
-            val client = OkHttpClient()
-            val response = client.newCall(Request.Builder().url(url).header("User-Agent", "Mozilla/5.0").build()).execute()
-            if (!response.isSuccessful || response.body == null) return null
-
-            val file = File(cacheDir, "instagram_short_${System.currentTimeMillis()}.mp4")
-            val input = response.body!!.byteStream()
-            val output = FileOutputStream(file)
-            input.copyTo(output)
-            input.close()
-            output.close()
-            file
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
-        }
+        startActivity(intent)
     }
 
     private fun createNotification(): Notification {
